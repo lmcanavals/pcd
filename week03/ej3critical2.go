@@ -1,22 +1,35 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func rndSleep() {
+	t := time.Duration(rand.Intn(1000000) + 10)
+	time.Sleep(t * time.Nanosecond)
+}
+func myPrint(str string) {
+	rndSleep()
+	fmt.Println(str)
+}
 
 var wantp = false
 var wantq = false
 
 func P() {
 	for {
-		fmt.Println("P NCS 1")
-		fmt.Println("P NCS 2")
-		fmt.Println("P NCS 3")
+		myPrint("P NCS 1")
+		myPrint("P NCS 2")
+
 		for wantq {
 		}
 		wantp = true
 
-		fmt.Println("P CRITICAL 1")
-		fmt.Println("P CRITICAL 2")
-		fmt.Println("P CRITICAL 3")
+		myPrint("P CRITICAL 1")
+		myPrint("P CRITICAL 2")
+		myPrint("P CRITICAL 3")
 
 		wantp = false
 	}
@@ -24,16 +37,16 @@ func P() {
 
 func Q() {
 	for {
-		fmt.Println("	Q NCS 1")
-		fmt.Println("	Q NCS 2")
-		fmt.Println("	Q NCS 3")
+		myPrint("	Q NCS 1")
+		myPrint("	Q NCS 2")
+
 		for wantp {
 		}
 		wantq = true
 
-		fmt.Println("	Q CRITICAL 1")
-		fmt.Println("	Q CRITICAL 2")
-		fmt.Println("	Q CRITICAL 3")
+		myPrint("	Q CRITICAL 1")
+		myPrint("	Q CRITICAL 2")
+		myPrint("	Q CRITICAL 3")
 
 		wantq = false
 	}
