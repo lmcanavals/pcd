@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-var min int
-
 func server(hostname, remote string, end chan bool) {
 	ln, _ := net.Listen("tcp", hostname)
 	defer ln.Close()
@@ -26,17 +24,10 @@ func handle(con net.Conn, remote string, end chan bool) {
 	msg, _ := r.ReadString('\n')
 	num, _ := strconv.Atoi(strings.TrimSpace(msg))
 	fmt.Printf("%d from %s\n", num, con.RemoteAddr())
-	if min == -1 {
-		min = num
-	} else if num == -1 {
-		send(num, remote)
-		fmt.Printf("%s -> %d\n", con.LocalAddr(), min)
-		end <- true
-	} else if num < min {
-		send(min, remote)
-		min = num
+	if num <= 0 {
+		fmt.Println("Oh no!, perdí")
 	} else {
-		send(num, remote)
+		send(num-1, remote)
 	}
 }
 
@@ -55,10 +46,25 @@ func main() {
 	fmt.Print("Remote hostname: ")
 	fmt.Scanf("%s", &remote)
 
-	end := make(chan bool)
-	min = -1
+	remote = fmt.Sprintf("localhost:800%s", remote)
 
-	go server(hostname, remote, end)
-	<-end
-	fmt.Println("That's  all, folks!")
+	if hostname == "" {
+		fmt.Println("I'm the starter node")
+		var num int
+		for {
+			fmt.Print("Number to start: ")
+			fmt.Scanf("%d", &num)
+			if num == 0 {
+				break
+			}
+			send(num, remote)
+		}
+	} else {
+		hostname = fmt.Sprintf("localhost:800%s", hostname)
+		end := make(chan bool)
+
+		go server(hostname, remote, end)
+		<-end
+		fmt.Println("That's  all, folks!")
+	}
 }
