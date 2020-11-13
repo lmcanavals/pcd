@@ -24,7 +24,10 @@ func handle(con net.Conn, remote string, end chan bool) {
 	msg, _ := r.ReadString('\n')
 	num, _ := strconv.Atoi(strings.TrimSpace(msg))
 	fmt.Printf("%d from %s\n", num, con.RemoteAddr())
-	if num <= 0 {
+	if num < 0 {
+		send(num, remote)
+		end <- true
+	} else if num == 0 {
 		fmt.Println("Oh no!, perdí")
 	} else {
 		send(num-1, remote)
@@ -33,9 +36,12 @@ func handle(con net.Conn, remote string, end chan bool) {
 
 func send(num int, remote string) {
 	if remote != "0" {
-		con, _ := net.Dial("tcp", remote)
-		defer con.Close()
-		fmt.Fprintf(con, "%d\n", num)
+		if con, err := net.Dial("tcp", remote); err != nil {
+			defer con.Close()
+			fmt.Fprintf(con, "%d\n", num)
+		} else {
+			fmt.Printf("Unable to communicate with %s\n", remote)
+		}
 	}
 }
 
