@@ -14,18 +14,18 @@ type Msg struct {
 	Num int `json: num`
 }
 
-func listen(hostname, remote string) {
+func listen(hostname string, chSender chan<- int) {
 	if ln, err := net.Listen("tcp", hostname); err == nil {
 		defer ln.Close()
 		for {
 			if cn, err := ln.Accept(); err == nil {
-				go handle(cn, remote)
+				go handle(cn, chSender)
 			}
 		}
 	}
 }
 
-func handle(cn net.Conn, remote string) {
+func handle(cn net.Conn, chSender chan<- int) {
 	defer cn.Close()
 	dec := json.NewDecoder(cn)
 	msg := &Msg{}
@@ -34,7 +34,7 @@ func handle(cn net.Conn, remote string) {
 	if  msg.Num == 0 {
 		fmt.Println("Perdí :(")
 	} else {
-		send(remote, msg.Num - 1)
+		chSender<- msg.Num - 1
 	}
 }
 
@@ -46,6 +46,12 @@ func send(remote string, num int) {
 	}
 }
 
+func senderProc(remotes []string, chSender <-chan int) {
+	for num := range chSender {
+		send(remotes[rand.Intn(len(remotes))], num)
+	}
+}
+
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	if len(os.Args) == 1 {
@@ -54,6 +60,8 @@ func main() {
 	} else if len(os.Args) == 2 {
 		send(os.Args[1], rand.Intn(100));
 	} else {
-		listen(os.Args[1], os.Args[2])
+		chSender := make(chan int)
+		go senderProc(os.Args[2:], chSender)
+		listen(os.Args[1], chSender)
 	}
 }
