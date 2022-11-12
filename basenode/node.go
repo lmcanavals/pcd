@@ -17,15 +17,15 @@ type Msg struct {
 }
 
 var (
-	hostname string
-	remotes  []string
-	cont     int
-	mynum    int
-	nextnum  int
-	next     string
-	imfirst  bool
-	ready    chan bool
-	yach     chan bool
+	hostname  string
+	chRemotes chan []string
+	cont      int
+	mynum     int
+	nextnum   int
+	next      string
+	imfirst   bool
+	ready     chan bool
+	yach      chan bool
 )
 
 func listen() {
@@ -48,14 +48,16 @@ func handle(cn net.Conn) {
 	switch msg.Cmd {
 	case "connect":
 		enc := json.NewEncoder(cn)
+		remotes := <-chRemotes
 		enc.Encode(Msg{"welcome", hostname, remotes})
 		for _, remote := range remotes {
 			send(remote, Msg{"update", hostname, []string{msg.Hostname}})
 		}
 		remotes = append(remotes, msg.Hostname)
+		chRemotes <- remotes
 		// fmt.Println(remotes)
 	case "update":
-		remotes = append(remotes, msg.Data[0])
+		chRemotes <- append(<-chRemotes, msg.Data[0])
 		// fmt.Println(remotes)
 	case "agrawalla":
 		mynum = rand.Intn(int(1e9))
@@ -63,9 +65,11 @@ func handle(cn net.Conn) {
 		imfirst = true
 		next = ""
 		cont = 0
+		remotes := <-chRemotes
 		for _, remote := range remotes {
 			send(remote, Msg{"num", hostname, []string{fmt.Sprintf("%d", mynum)}})
 		}
+		chRemotes <- remotes
 		yach <- true
 	case "num":
 		<-yach
@@ -77,6 +81,8 @@ func handle(cn net.Conn) {
 			next = msg.Hostname
 		}
 		cont++
+		remotes := <-chRemotes
+		chRemotes <- remotes
 		if cont == len(remotes) {
 			if imfirst {
 				fmt.Println("I'm first")
@@ -99,7 +105,7 @@ func send(remote string, msg Msg) {
 			dec := json.NewDecoder(cn)
 			var msg Msg
 			dec.Decode(&msg)
-			remotes = append(msg.Data, remote)
+			chRemotes <- append(<-chRemotes, msg.Data...)
 			// fmt.Println(remotes)
 		}
 	}
@@ -119,13 +125,16 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	yach = make(chan bool, 1)
 	ready = make(chan bool)
+	chRemotes = make(chan []string, 1)
 	if len(os.Args) == 1 {
 		fmt.Printf("Usage: %s <hostname:port> [remote:port]\n\n", os.Args[0])
 	} else if len(os.Args) == 2 {
 		hostname = os.Args[1]
+		chRemotes <- []string{}
 		listen()
 	} else if len(os.Args) == 3 {
 		hostname = os.Args[1]
+		chRemotes <- []string{os.Args[2]}
 		go func() {
 			send(os.Args[2], Msg{"connect", hostname, []string{}})
 		}()
