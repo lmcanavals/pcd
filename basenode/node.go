@@ -3,26 +3,29 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
+	"strconv"
+	"time"
 )
 
 type Msg struct {
-	Cmd string `json:"cmd"`
-	Hostname string `json:"hostname"`
-	Data []string `json:"data"`
+	Cmd      string   `json:"cmd"`
+	Hostname string   `json:"hostname"`
+	Data     []string `json:"data"`
 }
 
 var (
 	hostname string
-	remotes []string
-	cont int
-	mynum int
-	nextnum int
-	next string
-	imfist bool
-	ready chan bool
-	yach chan bool
+	remotes  []string
+	cont     int
+	mynum    int
+	nextnum  int
+	next     string
+	imfirst  bool
+	ready    chan bool
+	yach     chan bool
 )
 
 func listen() {
@@ -42,7 +45,7 @@ func handle(cn net.Conn) {
 	var msg Msg
 	dec.Decode(&msg)
 	fmt.Println(msg)
-	switch (msg.Cmd) {
+	switch msg.Cmd {
 	case "connect":
 		enc := json.NewEncoder(cn)
 		enc.Encode(Msg{"welcome", hostname, remotes})
@@ -57,7 +60,7 @@ func handle(cn net.Conn) {
 	case "agrawalla":
 		mynum = rand.Intn(int(1e9))
 		nextnum = int(1e9) + 1
-		image = true
+		imfirst = true
 		next = ""
 		cont = 0
 		for _, remote := range remotes {
@@ -79,7 +82,9 @@ func handle(cn net.Conn) {
 				fmt.Println("I'm first")
 				go distributedCriticalSection()
 			}
-			ready<-true
+			ready <- true
+		} else {
+			yach <- true
 		}
 	case "start":
 		go distributedCriticalSection()
@@ -111,16 +116,23 @@ func distributedCriticalSection() {
 }
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
+	yach = make(chan bool, 1)
+	ready = make(chan bool)
 	if len(os.Args) == 1 {
 		fmt.Printf("Usage: %s <hostname:port> [remote:port]\n\n", os.Args[0])
 	} else if len(os.Args) == 2 {
 		hostname = os.Args[1]
 		listen()
-	} else {
+	} else if len(os.Args) == 3 {
 		hostname = os.Args[1]
 		go func() {
 			send(os.Args[2], Msg{"connect", hostname, []string{}})
 		}()
 		listen()
+	} else {
+		for _, remote := range os.Args[1:] {
+			send(remote, Msg{"agrawalla", "anonymous", []string{}})
+		}
 	}
 }
