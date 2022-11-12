@@ -16,6 +16,13 @@ type Msg struct {
 var (
 	hostname string
 	remotes []string
+	cont int
+	mynum int
+	nextnum int
+	next string
+	imfist bool
+	ready chan bool
+	yach chan bool
 )
 
 func listen() {
@@ -43,10 +50,39 @@ func handle(cn net.Conn) {
 			send(remote, Msg{"update", hostname, []string{msg.Hostname}})
 		}
 		remotes = append(remotes, msg.Hostname)
-		fmt.Println(remotes)
+		// fmt.Println(remotes)
 	case "update":
 		remotes = append(remotes, msg.Data[0])
-		fmt.Println(remotes)
+		// fmt.Println(remotes)
+	case "agrawalla":
+		mynum = rand.Intn(int(1e9))
+		nextnum = int(1e9) + 1
+		image = true
+		next = ""
+		cont = 0
+		for _, remote := range remotes {
+			send(remote, Msg{"num", hostname, []string{fmt.Sprintf("%d", mynum)}})
+		}
+		yach <- true
+	case "num":
+		<-yach
+		newnum, _ := strconv.Atoi(msg.Data[0])
+		if mynum > newnum {
+			imfirst = false
+		} else if newnum < nextnum {
+			nextnum = newnum
+			next = msg.Hostname
+		}
+		cont++
+		if cont == len(remotes) {
+			if imfirst {
+				fmt.Println("I'm first")
+				go distributedCriticalSection()
+			}
+			ready<-true
+		}
+	case "start":
+		go distributedCriticalSection()
 	}
 }
 
@@ -59,8 +95,18 @@ func send(remote string, msg Msg) {
 			var msg Msg
 			dec.Decode(&msg)
 			remotes = append(msg.Data, remote)
-			fmt.Println(remotes)
+			// fmt.Println(remotes)
 		}
+	}
+}
+
+func distributedCriticalSection() {
+	<-ready
+	fmt.Println("Me toca!")
+	if next != "" {
+		send(next, Msg{"start", hostname, []string{}})
+	} else {
+		fmt.Println("I was last :(")
 	}
 }
 
