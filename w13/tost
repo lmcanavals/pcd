@@ -1,0 +1,8 @@
+ go run node.go -h localhost:8003 -p localhost:8002 -n localhost:8004
+ go run node.go -h localhost:8004 -p localhost:8003 -n localhost:8005
+ go run node.go -h localhost:8005 -p localhost:8004 -n localhost:8006
+ go run node.go -h localhost:8006 -p localhost:8005 -n localhost:8007
+ go run node.go -h localhost:8007 -p localhost:8006 -n localhost:8008
+ go run node.go -h localhost:8008 -p localhost:8007 -n localhost:8009
+ go run node.go -h localhost:8009 -p localhost:8008 -n localhost:8010
+ go run node.go -h localhost:8010 -p localhost:8009
